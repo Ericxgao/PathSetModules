@@ -9,8 +9,9 @@ License: GNU GPL-3.0
 #include "filters/pitchshifter.h"
 #include "util.hpp"
 #include <iostream>
+#ifndef METAMODULE
 #include <fstream>
-
+#endif
 #define BUFFER_COUNT 6
 
 //Note this assumes 44.1khz to achive a max cube size of 10 seconds
@@ -182,16 +183,16 @@ static const int READ_PATTERN_POS [][6] = {
 
 #define MAX_CHANNELS 2
 
-void writeDoubleBuffer(std::ostream * out, dsp::DoubleRingBuffer<float,PITCH_BUFF_SIZE> * buffer){
-	out->write( (char *)& buffer->start, sizeof(float));
-	out->write( (char *)& buffer->end, sizeof(float));
-	out->write( (char *)& buffer->data, PITCH_BUFF_SIZE * 2 * sizeof(float));
+void writeDoubleBuffer(FILE* file, dsp::DoubleRingBuffer<float,PITCH_BUFF_SIZE>* buffer) {
+	std::fwrite(&buffer->start, sizeof(float), 1, file);
+	std::fwrite(&buffer->end, sizeof(float), 1, file);
+	std::fwrite(buffer->data, sizeof(float), PITCH_BUFF_SIZE * 2, file);
 }
 
-void readDoubleBuffer(std::fstream * in, dsp::DoubleRingBuffer<float,PITCH_BUFF_SIZE> * buffer){
-	in->read( (char *)& buffer->start, sizeof(float));
-	in->read( (char *)& buffer->end, sizeof(float));
-	in->read( (char *)& buffer->data, PITCH_BUFF_SIZE * 2 * sizeof(float));
+void readDoubleBuffer(FILE* file, dsp::DoubleRingBuffer<float,PITCH_BUFF_SIZE>* buffer) {
+	std::fread(&buffer->start, sizeof(float), 1, file);
+	std::fread(&buffer->end, sizeof(float), 1, file);
+	std::fread(buffer->data, sizeof(float), PITCH_BUFF_SIZE * 2, file);
 }
 
 struct IceTray : Module {
@@ -387,24 +388,32 @@ struct IceTray : Module {
 	void onAdd(const AddEvent& e) override {
 		std::string path = system::join(createPatchStorageDirectory(), "buffers.dat");
 		DEBUG("Reading data file '%s' ",path.c_str());
-		// Read file...
-		std::fstream dataFile(path, ios::binary | ios::in);
-		if (dataFile.is_open())
-		{
+		
+#ifdef METAMODULE
+		// Use FILE* instead of fstream
+		FILE* file = std::fopen(path.c_str(), "rb");
+		if (file) {
 			DEBUG("Data file is open");
-	    	dataFile.read( (char *)& buffers[0][0][0], BUFFER_COUNT * BUFFER_SIZE_MAX * MAX_CHANNELS * sizeof(float) );
-			dataFile.read( (char *)& playbackCrossFadeBuffer[0][0], CROSS_FADE_AMT * MAX_CHANNELS * sizeof(float) );
-			dataFile.read( (char *)& recordCrossFadePreBuffer[0][0], CROSS_FADE_AMT * MAX_CHANNELS * sizeof(float) );
-			// readDoubleBuffer(& dataFile, & in_Buffer[0]);
-			// readDoubleBuffer(& dataFile, & in_Buffer[1]);
-			// readDoubleBuffer(& dataFile, & ps_Buffer[0]);
-			// readDoubleBuffer(& dataFile, & ps_Buffer[1]);
-	    	dataFile.close();
-	  	}
-	  	else
-	  	{
-	  		DEBUG("Unable to open data file");
-	  	}
+			std::fread(&buffers[0][0][0], sizeof(float), BUFFER_COUNT * BUFFER_SIZE_MAX * MAX_CHANNELS, file);
+			std::fread(&playbackCrossFadeBuffer[0][0], sizeof(float), CROSS_FADE_AMT * MAX_CHANNELS, file);
+			std::fread(&recordCrossFadePreBuffer[0][0], sizeof(float), CROSS_FADE_AMT * MAX_CHANNELS, file);
+			std::fclose(file);
+		} else {
+			DEBUG("Unable to open data file");
+		}
+#else
+		// Read file using std::fstream...
+		std::fstream dataFile(path, std::ios::binary | std::ios::in);
+		if (dataFile.is_open()) {
+			DEBUG("Data file is open");
+			dataFile.read((char *)&buffers[0][0][0], BUFFER_COUNT * BUFFER_SIZE_MAX * MAX_CHANNELS * sizeof(float));
+			dataFile.read((char *)&playbackCrossFadeBuffer[0][0], CROSS_FADE_AMT * MAX_CHANNELS * sizeof(float));
+			dataFile.read((char *)&recordCrossFadePreBuffer[0][0], CROSS_FADE_AMT * MAX_CHANNELS * sizeof(float));
+			dataFile.close();
+		} else {
+			DEBUG("Unable to open data file");
+		}
+#endif
 
 		updateCubeLights();
 		updateRecordAndPlaybackLights();
@@ -413,16 +422,24 @@ struct IceTray : Module {
 	void onSave(const SaveEvent& e) override {
 		std::string path = system::join(createPatchStorageDirectory(), "buffers.dat");
 		DEBUG("Saving data file '%s' ",path.c_str());
-		// Write file...
-		std::fstream dataFile(path, ios::binary | ios::out);
-		dataFile.write( (char *)& buffers[0][0][0], BUFFER_COUNT * BUFFER_SIZE_MAX * MAX_CHANNELS * sizeof(float) );
-		dataFile.write( (char *)& playbackCrossFadeBuffer[0][0], CROSS_FADE_AMT * MAX_CHANNELS * sizeof(float) );
-		dataFile.write( (char *)& recordCrossFadePreBuffer[0][0], CROSS_FADE_AMT * MAX_CHANNELS * sizeof(float) );
-		// writeDoubleBuffer(& dataFile, & in_Buffer[0]);
-		// writeDoubleBuffer(& dataFile, & in_Buffer[1]);
-		// writeDoubleBuffer(& dataFile, & ps_Buffer[0]);
-		// writeDoubleBuffer(& dataFile, & ps_Buffer[1]);
+		
+#ifdef METAMODULE
+		// Use FILE* instead of fstream
+		FILE* file = std::fopen(path.c_str(), "wb");
+		if (file) {
+			std::fwrite(&buffers[0][0][0], sizeof(float), BUFFER_COUNT * BUFFER_SIZE_MAX * MAX_CHANNELS, file);
+			std::fwrite(&playbackCrossFadeBuffer[0][0], sizeof(float), CROSS_FADE_AMT * MAX_CHANNELS, file);
+			std::fwrite(&recordCrossFadePreBuffer[0][0], sizeof(float), CROSS_FADE_AMT * MAX_CHANNELS, file);
+			std::fclose(file);
+		}
+#else
+		// Write file using std::fstream...
+		std::fstream dataFile(path, std::ios::binary | std::ios::out);
+		dataFile.write((char *)&buffers[0][0][0], BUFFER_COUNT * BUFFER_SIZE_MAX * MAX_CHANNELS * sizeof(float));
+		dataFile.write((char *)&playbackCrossFadeBuffer[0][0], CROSS_FADE_AMT * MAX_CHANNELS * sizeof(float));
+		dataFile.write((char *)&recordCrossFadePreBuffer[0][0], CROSS_FADE_AMT * MAX_CHANNELS * sizeof(float));
 		dataFile.close();
+#endif
 	}
 
 	json_t *dataToJson() override {
