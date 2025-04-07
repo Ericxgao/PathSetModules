@@ -613,7 +613,11 @@ struct GPRootWidget : ModuleWidget {
 
 	void addModule(GPRoot* module, Vec delta, int ni){
 		addParam(createParamCentered<ModeSwitch<VCVButton>>(mm2px(delta+Vec(26.15, 25.868)), module, modeButtonParam + ni));
-		addParam(createParamCentered<WhiteKnob>(mm2px(delta+Vec(7.544, 36.457)), module, cvKnobParam + ni));		
+		#ifndef METAMODULE
+		addParam(createParamCentered<WhiteKnob>(mm2px(delta+Vec(7.544, 36.457)), module, cvKnobParam + ni));	
+		#else
+		addParam(createParamCentered<RoundBlackKnob>(mm2px(delta+Vec(7.544, 36.457)), module, cvKnobParam + ni));	
+		#endif
 		addInput(createInputCentered<PJ301MPort>(mm2px(delta+Vec(7.544, 25.868)), module, nodeInput + ni * NODE_IN_MAX + 0));
 		addInput(createInputCentered<PJ301MPort>(mm2px(delta+Vec(16.847, 25.868)), module, nodeInput + ni * NODE_IN_MAX + 1));
 		addInput(createInputCentered<PJ301MPort>(mm2px(delta+Vec(35.453, 25.868)), module, modeTriggerInput + ni));	
