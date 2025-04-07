@@ -613,11 +613,7 @@ struct GPRootWidget : ModuleWidget {
 
 	void addModule(GPRoot* module, Vec delta, int ni){
 		addParam(createParamCentered<ModeSwitch<VCVButton>>(mm2px(delta+Vec(26.15, 25.868)), module, modeButtonParam + ni));
-		#ifndef METAMODULE
-		addParam(createParamCentered<WhiteKnob>(mm2px(delta+Vec(7.544, 36.457)), module, cvKnobParam + ni));	
-		#else
-		addParam(createParamCentered<RoundBlackKnob>(mm2px(delta+Vec(7.544, 36.457)), module, cvKnobParam + ni));	
-		#endif
+		addParam(createParamCentered<WhiteKnob>(mm2px(delta+Vec(7.544, 36.457)), module, cvKnobParam + ni));		
 		addInput(createInputCentered<PJ301MPort>(mm2px(delta+Vec(7.544, 25.868)), module, nodeInput + ni * NODE_IN_MAX + 0));
 		addInput(createInputCentered<PJ301MPort>(mm2px(delta+Vec(16.847, 25.868)), module, nodeInput + ni * NODE_IN_MAX + 1));
 		addInput(createInputCentered<PJ301MPort>(mm2px(delta+Vec(35.453, 25.868)), module, modeTriggerInput + ni));	
@@ -629,12 +625,14 @@ struct GPRootWidget : ModuleWidget {
 		addChild(createLightCentered<SmallLight<BlueLight>>(mm2px(delta+Vec(20.487, 40.484)), module, stateLight + ni * NODE_STATE_MAX + 1));
 		addChild(createLightCentered<SmallLight<BlueLight>>(mm2px(delta+Vec(29.918, 40.484)), module, stateLight + ni * NODE_STATE_MAX + 2));
 		addChild(createLightCentered<SmallLight<BlueLight>>(mm2px(delta+Vec(39.35, 40.484)), module, stateLight + ni * NODE_STATE_MAX + 3));
+		#ifndef METAMODULE
 		{
 			auto light = createLight<RectangleLight<BlueLight>>(mm2px(delta+Vec(2.2, 30.364)), module, activeLight + ni);
 			light->box.size = mm2px(Vec(38.719, 1.590));
 			light->module = module;
 			addChild(light);
 		}
+		#endif
 	}
 
 	void appendBaseContextMenu(GPRoot* module, Menu* menu) {
